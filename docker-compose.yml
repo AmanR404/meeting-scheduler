@@ -1,0 +1,89 @@
+# Meeting Scheduler — Docker Compose
+#
+# Conflict-safe by design (this machine runs other projects' databases):
+#   • All containers are namespaced "ms-*" and live on a dedicated network/volumes.
+#   • Redis and Mongo do NOT publish host ports by default — they're only reachable
+#     inside this compose network, so they can't clash with your other DBs.
+#   • The bundled Mongo is behind the "local-db" profile and stays OFF unless you
+#     ask for it (the project defaults to MongoDB Atlas via backend/.env).
+#
+# Usage:
+#   docker compose up -d --build                 # backend + redis (Mongo = Atlas)
+#   docker compose --profile local-db up -d      # also start a local Mongo
+#
+# Override host ports without editing this file:  BACKEND_PORT=5050 docker compose up
+
+services:
+  ms-redis:
+    image: redis:7-alpine
+    container_name: ms-redis
+    restart: unless-stopped
+    networks: [ms-network]
+    volumes:
+      - ms-redis-data:/data
+    # Uncomment to access Redis from the host (changed from default 6379 to avoid clashes):
+    # ports:
+    #   - "6380:6379"
+
+  ms-mongo:
+    image: mongo:7
+    container_name: ms-mongo
+    restart: unless-stopped
+    profiles: ["local-db"] # only starts with: docker compose --profile local-db up
+    networks: [ms-network]
+    volumes:
+      - ms-mongo-data:/data/db
+    # Uncomment to access Mongo from the host (changed from default 27017 to avoid clashes):
+    # ports:
+    #   - "27018:27017"
+
+  ms-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ms-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      # Point the app at the in-network Redis container (overrides .env)
+      REDIS_HOST: ms-redis
+      REDIS_PORT: "6379"
+      # To use the bundled Mongo instead of Atlas, uncomment the next line
+      # and start with the local-db profile:
+      # MONGODB_URI: mongodb://ms-mongo:27017/meeting_scheduler
+    ports:
+      - "${BACKEND_PORT:-5000}:5000"
+    volumes:
+      # Mount the service-account JSON at runtime (kept out of the image)
+      - ./backend/credentials:/app/credentials:ro
+    depends_on:
+      - ms-redis
+    networks: [ms-network]
+
+  ms-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Inlined into the browser bundle at build time. Point at the backend's
+        # host-published URL (the browser calls it, not the container network).
+        NEXT_PUBLIC_API_URL: "http://localhost:${BACKEND_PORT:-5000}/api"
+    container_name: ms-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - ms-backend
+    networks: [ms-network]
+
+networks:
+  ms-network:
+    name: ms-network
+    driver: bridge
+
+volumes:
+  ms-redis-data:
+    name: ms-redis-data
+  ms-mongo-data:
+    name: ms-mongo-data

@@ -18,6 +18,7 @@ build/
 .next/
 out/
 *.tsbuildinfo
+next-env.d.ts
 
 # Logs
 logs/

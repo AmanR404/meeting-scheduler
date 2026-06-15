@@ -1,0 +1,869 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Teacher Meeting Scheduler & Attendance API",
+    "version": "1.0.0",
+    "description": "REST API for scheduling Google Meet meetings, managing calendars, tracking attendance, and reporting. Authentication uses Google OAuth 2.0; the session is a JWT stored in an httpOnly cookie."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000",
+      "description": "development"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "ms_token"
+      },
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "message": {
+            "type": "string"
+          },
+          "details": {
+            "type": "object"
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "teacher",
+              "candidate"
+            ]
+          },
+          "profileImage": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "lastLoginAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Meeting": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "interview",
+              "technical_assessment",
+              "training",
+              "classroom",
+              "mentorship",
+              "mock_interview",
+              "group_discussion"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "scheduled",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "startTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "meetLink": {
+            "type": "string"
+          },
+          "googleEventId": {
+            "type": "string"
+          }
+        }
+      },
+      "Attendance": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "meeting": {
+            "type": "string"
+          },
+          "participant": {
+            "type": "string"
+          },
+          "joinTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "leaveTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationMinutes": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "present",
+              "late",
+              "left_early",
+              "absent"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "workspace",
+              "app",
+              "manual"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Health"
+    },
+    {
+      "name": "Auth"
+    },
+    {
+      "name": "Meetings"
+    },
+    {
+      "name": "Attendance"
+    },
+    {
+      "name": "Reports"
+    },
+    {
+      "name": "Dashboard"
+    }
+  ],
+  "security": [
+    {
+      "cookieAuth": []
+    }
+  ],
+  "paths": {
+    "/api/reports/summary": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Attendance analytics summary (teacher). Supports json/pdf/xlsx export.",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "json",
+                "pdf",
+                "xlsx"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Summary or file download"
+          }
+        }
+      }
+    },
+    "/api/reports/meeting/{meetingId}": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Per-meeting attendance report (teacher). Supports json/pdf/xlsx export.",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "meetingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "json",
+                "pdf",
+                "xlsx"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Report or file download"
+          }
+        }
+      }
+    },
+    "/api/meetings": {
+      "post": {
+        "tags": [
+          "Meetings"
+        ],
+        "summary": "Create a one-time or recurring meeting (teacher only)",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title",
+                  "type",
+                  "startTime",
+                  "endTime",
+                  "participantEmails"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "notes": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "interview",
+                      "technical_assessment",
+                      "training",
+                      "classroom",
+                      "mentorship",
+                      "mock_interview",
+                      "group_discussion"
+                    ]
+                  },
+                  "startTime": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "endTime": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "timezone": {
+                    "type": "string"
+                  },
+                  "participantEmails": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "email"
+                    }
+                  },
+                  "recurrence": {
+                    "type": "object",
+                    "properties": {
+                      "frequency": {
+                        "type": "string",
+                        "enum": [
+                          "none",
+                          "daily",
+                          "weekly",
+                          "monthly"
+                        ]
+                      },
+                      "interval": {
+                        "type": "integer"
+                      },
+                      "count": {
+                        "type": "integer"
+                      },
+                      "until": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Meeting(s) created"
+          },
+          "409": {
+            "description": "Scheduling conflict"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Meetings"
+        ],
+        "summary": "List meetings for the current user",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "scheduled",
+                "completed",
+                "cancelled"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of meetings"
+          }
+        }
+      }
+    },
+    "/api/meetings/candidates": {
+      "get": {
+        "tags": [
+          "Meetings"
+        ],
+        "summary": "List candidate users for the participant picker (teacher only)",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of candidates"
+          }
+        }
+      }
+    },
+    "/api/meetings/{id}": {
+      "get": {
+        "tags": [
+          "Meetings"
+        ],
+        "summary": "Get a meeting by id",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Meeting"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Meetings"
+        ],
+        "summary": "Cancel a meeting (teacher only)",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cancelled"
+          }
+        }
+      }
+    },
+    "/api/meetings/{id}/reschedule": {
+      "patch": {
+        "tags": [
+          "Meetings"
+        ],
+        "summary": "Reschedule a meeting (teacher only)",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "startTime",
+                  "endTime"
+                ],
+                "properties": {
+                  "startTime": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "endTime": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Rescheduled"
+          },
+          "409": {
+            "description": "Scheduling conflict"
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Service health check",
+        "responses": {
+          "200": {
+            "description": "Service is healthy"
+          }
+        }
+      }
+    },
+    "/api/dashboard": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "summary": "Role-aware dashboard data (teacher or candidate)",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard data"
+          }
+        }
+      }
+    },
+    "/api/availability": {
+      "get": {
+        "tags": [
+          "Availability"
+        ],
+        "summary": "Get the teacher's availability (working hours, holidays, blocked slots)",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Availability"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Availability"
+        ],
+        "summary": "Update the teacher's availability",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      }
+    },
+    "/api/auth/google": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Start Google OAuth login",
+        "description": "Redirects the browser to Google's consent screen.",
+        "responses": {
+          "302": {
+            "description": "Redirect to Google"
+          }
+        }
+      }
+    },
+    "/api/auth/google/callback": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Google OAuth callback",
+        "description": "Handles Google's redirect, creates/updates the user, sets a session cookie.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to the frontend dashboard"
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Get the current authenticated user",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current user"
+          },
+          "401": {
+            "description": "Not authenticated"
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Log out (clear session cookie)",
+        "responses": {
+          "200": {
+            "description": "Logged out"
+          }
+        }
+      }
+    },
+    "/api/attendance/me": {
+      "get": {
+        "tags": [
+          "Attendance"
+        ],
+        "summary": "Get my attendance history",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attendance records"
+          }
+        }
+      }
+    },
+    "/api/attendance/meeting/{meetingId}": {
+      "get": {
+        "tags": [
+          "Attendance"
+        ],
+        "summary": "Get attendance for a meeting (teacher only)",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "meetingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attendance rows"
+          }
+        }
+      }
+    },
+    "/api/attendance/{meetingId}/join": {
+      "post": {
+        "tags": [
+          "Attendance"
+        ],
+        "summary": "Record joining a meeting (returns the Meet link)",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "meetingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Join recorded"
+          }
+        }
+      }
+    },
+    "/api/attendance/{meetingId}/heartbeat": {
+      "post": {
+        "tags": [
+          "Attendance"
+        ],
+        "summary": "Heartbeat while in a meeting (advances leave time)",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "meetingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Heartbeat recorded"
+          }
+        }
+      }
+    },
+    "/api/attendance/{meetingId}/sync": {
+      "post": {
+        "tags": [
+          "Attendance"
+        ],
+        "summary": "Sync attendance from Google Workspace Reports API (teacher only)",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "meetingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Synced"
+          }
+        }
+      }
+    },
+    "/api/attendance/{id}": {
+      "patch": {
+        "tags": [
+          "Attendance"
+        ],
+        "summary": "Manually override an attendance record (teacher only)",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      }
+    }
+  }
+}
