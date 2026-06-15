@@ -17,9 +17,12 @@ function LoginContent() {
     if (status === 'idle') dispatch(fetchMe());
   }, [status, dispatch]);
 
+  const user = useAppSelector((s) => s.auth.user);
   useEffect(() => {
-    if (status === 'authenticated') router.replace('/dashboard');
-  }, [status, router]);
+    if (status === 'authenticated') {
+      router.replace(user && !user.roleSelected ? '/onboarding' : '/dashboard');
+    }
+  }, [status, user, router]);
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4">

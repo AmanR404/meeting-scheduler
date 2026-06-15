@@ -19,6 +19,7 @@ export interface User {
   email: string;
   profileImage?: string;
   role: UserRole;
+  roleSelected?: boolean;
   timezone?: string;
   lastLoginAt?: string;
 }

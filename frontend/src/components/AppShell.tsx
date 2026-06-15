@@ -20,15 +20,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (status === 'idle') dispatch(fetchMe());
   }, [status, dispatch]);
 
+  const user = useAppSelector((s) => s.auth.user);
+
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/login');
-  }, [status, router]);
+    // New users must pick a role before using the app
+    if (status === 'authenticated' && user && !user.roleSelected) router.replace('/onboarding');
+  }, [status, user, router]);
 
   if (status === 'idle' || status === 'loading') {
     return <Spinner label="Loading…" />;
   }
   if (status === 'unauthenticated') {
     return <Spinner label="Redirecting to login…" />;
+  }
+  if (user && !user.roleSelected) {
+    return <Spinner label="Setting up your account…" />;
   }
 
   return (

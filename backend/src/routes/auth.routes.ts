@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { googleLogin, googleCallback, getMe, logout } from '../controllers/auth.controller';
+import { googleLogin, googleCallback, getMe, logout, setRole } from '../controllers/auth.controller';
 import { authenticate } from '../middleware/auth';
 import { authLimiter } from '../middleware/rateLimiter';
 
@@ -48,6 +48,28 @@ router.get('/google/callback', authLimiter, googleCallback);
  *       401: { description: Not authenticated }
  */
 router.get('/me', authenticate, getMe);
+
+/**
+ * @openapi
+ * /api/auth/role:
+ *   patch:
+ *     tags: [Auth]
+ *     summary: Switch the current user's role (demo/evaluation; gated by ALLOW_SELF_ROLE_SWITCH)
+ *     security: [{ cookieAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [role]
+ *             properties:
+ *               role: { type: string, enum: [teacher, candidate] }
+ *     responses:
+ *       200: { description: Role updated }
+ *       403: { description: Role switching disabled }
+ */
+router.patch('/role', authenticate, setRole);
 
 /**
  * @openapi

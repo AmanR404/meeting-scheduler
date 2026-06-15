@@ -8,7 +8,7 @@ import { getAuthUrl, exchangeCodeForTokens, verifyIdToken } from '../services/go
 import { upsertUserFromGoogle } from '../services/auth.service';
 import { recordAudit } from '../services/audit.service';
 import { signToken } from '../utils/jwt';
-import { AuditAction } from '../types/enums';
+import { AuditAction, UserRole } from '../types/enums';
 import { User } from '../models/User';
 
 const STATE_COOKIE = 'ms_oauth_state';
@@ -86,4 +86,45 @@ export const getMe = asyncHandler(async (req: Request, res: Response) => {
 export const logout = asyncHandler(async (_req: Request, res: Response) => {
   res.clearCookie(env.jwt.cookieName, baseCookieOptions());
   sendSuccess(res, 200, null, { message: 'Logged out' });
+});
+
+/**
+ * PATCH /api/auth/role — let a user switch their own role (Teacher/Candidate).
+ * Gated by ALLOW_SELF_ROLE_SWITCH so it can be disabled in real production.
+ * Re-issues the session cookie since the JWT carries the role.
+ */
+export const setRole = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw ApiError.unauthorized();
+
+  const { role } = req.body as { role?: string };
+  if (role !== UserRole.TEACHER && role !== UserRole.CANDIDATE) {
+    throw ApiError.badRequest('role must be "teacher" or "candidate"');
+  }
+
+  const current = await User.findById(req.user.id);
+  if (!current) throw ApiError.notFound('User not found');
+
+  // First-time selection (onboarding) is always allowed. Changing an
+  // already-chosen role afterwards requires ALLOW_SELF_ROLE_SWITCH.
+  const isFirstSelection = !current.roleSelected;
+  if (!isFirstSelection && !env.allowSelfRoleSwitch) {
+    throw ApiError.forbidden('Role switching is disabled');
+  }
+
+  current.role = role;
+  current.roleSelected = true;
+  await current.save();
+  const user = current;
+
+  const token = signToken({
+    id: user._id.toString(),
+    email: user.email,
+    name: user.name,
+    role: user.role,
+  });
+  res.cookie(env.jwt.cookieName, token, {
+    ...baseCookieOptions(),
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+  sendSuccess(res, 200, user, { message: `Role updated to ${role}` });
 });

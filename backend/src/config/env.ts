@@ -49,6 +49,10 @@ export const env = {
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean),
 
+  // Allow users to switch their own role (Teacher/Candidate) in-app. Useful for
+  // evaluation/demos where reviewers can't be pre-listed. Set to "false" in real prod.
+  allowSelfRoleSwitch: optional('ALLOW_SELF_ROLE_SWITCH', 'true') !== 'false',
+
   email: {
     provider: optional('EMAIL_PROVIDER', 'gmail'),
     user: optional('EMAIL_USER'),

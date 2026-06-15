@@ -22,6 +22,8 @@ export interface IUser extends Document {
   email: string;
   profileImage?: string;
   role: UserRole;
+  // Whether the user has explicitly chosen their role (first-login onboarding)
+  roleSelected: boolean;
   // Google OAuth tokens (for calendar/meet on behalf of teacher)
   googleAccessToken?: string;
   googleRefreshToken?: string;
@@ -62,6 +64,7 @@ const userSchema = new Schema<IUser>(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
     profileImage: { type: String },
     role: { type: String, enum: Object.values(UserRole), default: UserRole.CANDIDATE, index: true },
+    roleSelected: { type: Boolean, default: false },
     googleAccessToken: { type: String, select: false },
     googleRefreshToken: { type: String, select: false },
     googleTokenExpiry: { type: Date, select: false },

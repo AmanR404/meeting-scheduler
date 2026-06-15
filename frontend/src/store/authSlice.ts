@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { api, unwrap } from '@/lib/api';
-import type { User } from '@/types';
+import type { User, UserRole } from '@/types';
 
 interface AuthState {
   user: User | null;
@@ -23,6 +23,11 @@ export const logout = createAsyncThunk('auth/logout', async () => {
   await api.post('/auth/logout');
 });
 
+/** Switch the current user's role (demo/evaluation). */
+export const setRole = createAsyncThunk('auth/setRole', async (role: UserRole) => {
+  return await unwrap<User>(api.patch('/auth/role', { role }));
+});
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -43,6 +48,9 @@ const authSlice = createSlice({
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
         state.status = 'unauthenticated';
+      })
+      .addCase(setRole.fulfilled, (state, action) => {
+        state.user = action.payload;
       });
   },
 });

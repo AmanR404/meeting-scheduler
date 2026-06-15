@@ -47,17 +47,25 @@ export async function upsertUserFromGoogle(
     existing.name = profile.name;
     existing.profileImage = profile.picture;
     existing.lastLoginAt = now;
+    // Allow-listed teachers are always teachers and never need onboarding
+    if (resolveRole(profile.email) === UserRole.TEACHER) {
+      existing.role = UserRole.TEACHER;
+      existing.roleSelected = true;
+    }
     Object.assign(existing, tokenFields);
     await existing.save();
     return { user: existing, isNew: wasPlaceholder };
   }
 
+  const role = resolveRole(profile.email);
   const created = await User.create({
     googleId: profile.googleId,
     email: profile.email,
     name: profile.name,
     profileImage: profile.picture,
-    role: resolveRole(profile.email),
+    role,
+    // Allow-listed teachers are pre-assigned; everyone else picks their role at first login
+    roleSelected: role === UserRole.TEACHER,
     timezone: env.timezone,
     lastLoginAt: now,
     ...tokenFields,
