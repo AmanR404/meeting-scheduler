@@ -55,8 +55,10 @@ export function startReminderWorker(): Worker<ReminderJobData> | null {
       connection: redisConnection,
       concurrency: 5,
     });
+    worker.on('ready', () => logger.info('✅ Reminder worker connected to Redis — reminders are ACTIVE'));
     worker.on('failed', (job, err) => logger.error(`Reminder job ${job?.id} failed`, err));
-    worker.on('error', (err) => logger.warn('Reminder worker error', err.message));
+    worker.on('error', (err) => logger.warn(`⚠️  Reminder worker (Redis) error: ${err.message}`));
+    worker.on('completed', (job) => logger.info(`Reminder ${job.data.offsetLabel} sent for meeting ${job.data.meetingId}`));
     logger.info('🔔 Reminder worker started');
     return worker;
   } catch (err) {

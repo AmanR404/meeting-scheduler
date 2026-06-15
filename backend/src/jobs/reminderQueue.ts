@@ -39,6 +39,7 @@ export async function scheduleReminders(meetingId: string, startTime: Date): Pro
   const now = Date.now();
   try {
     const q = getQueue();
+    const scheduled: string[] = [];
     for (const offset of REMINDER_OFFSETS) {
       const delay = startTime.getTime() - offset.ms - now;
       if (delay <= 0) continue; // too late to schedule this reminder
@@ -52,9 +53,15 @@ export async function scheduleReminders(meetingId: string, startTime: Date): Pro
           removeOnFail: 100,
         }
       );
+      scheduled.push(offset.label);
+    }
+    if (scheduled.length) {
+      logger.info(`⏰ Scheduled ${scheduled.length} reminder(s) for meeting ${meetingId}: ${scheduled.join(', ')} before start`);
+    } else {
+      logger.info(`No future reminder offsets for meeting ${meetingId} (starts too soon)`);
     }
   } catch (err) {
-    logger.warn('Could not schedule reminders (Redis unavailable?)', err);
+    logger.warn('Could not schedule reminders (Redis unavailable?) — start Redis to enable reminders', err);
   }
 }
 
