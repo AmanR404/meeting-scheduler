@@ -218,3 +218,15 @@ Maintained by **[AmanR404](https://github.com/AmanR404)** — repository: <https
 ## License
 
 [MIT](LICENSE)
+
+---
+
+## Screenshots
+
+**Login**
+
+![Login screen](docs/screenshots/login.png)
+
+**Teacher Dashboard**
+
+![Teacher dashboard](docs/screenshots/dashboard.png)
