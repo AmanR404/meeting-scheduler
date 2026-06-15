@@ -8,9 +8,9 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "seed": "ts-node src/utils/seed.ts",
+    "docs:gen": "ts-node src/utils/generateOpenapi.ts",
     "worker": "ts-node src/jobs/reminderWorker.ts",
-    "lint": "eslint . --ext .ts",
-    "test": "jest --runInBand --detectOpenHandles"
+    "lint": "eslint . --ext .ts"
   },
   "keywords": ["meetings", "scheduler", "attendance", "google-meet", "express", "typescript"],
   "author": "",
@@ -46,7 +46,6 @@
     "@types/cookie-parser": "^1.4.7",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
-    "@types/jest": "^29.5.12",
     "@types/jsonwebtoken": "^9.0.6",
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.12.12",
@@ -54,11 +53,7 @@
     "@types/pdfkit": "^0.13.4",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.6",
-    "@types/supertest": "^6.0.2",
-    "jest": "^29.7.0",
     "nodemon": "^3.1.0",
-    "supertest": "^7.0.0",
-    "ts-jest": "^29.1.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
   }

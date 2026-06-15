@@ -694,6 +694,49 @@
         }
       }
     },
+    "/api/auth/role": {
+      "patch": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Switch the current user's role (demo/evaluation; gated by ALLOW_SELF_ROLE_SWITCH)",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "role"
+                ],
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "teacher",
+                      "candidate"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Role updated"
+          },
+          "403": {
+            "description": "Role switching disabled"
+          }
+        }
+      }
+    },
     "/api/auth/logout": {
       "post": {
         "tags": [
