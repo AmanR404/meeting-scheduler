@@ -1,20 +1,15 @@
 import { Types } from 'mongoose';
 import { Meeting, IMeeting } from '../models/Meeting';
-import { Notification } from '../models/Notification';
 import { User, IUser } from '../models/User';
 import { resolveParticipantsByEmail } from './user.service';
 import { findConflicts } from './availability.service';
 import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } from './calendar.service';
+import { notifyInvitation, notifyReschedule, notifyCancellation } from './notification.service';
+import { scheduleReminders, rescheduleReminders, removeReminders } from '../jobs/reminderQueue';
 import { expandRecurrence } from '../utils/recurrence';
 import { ApiError } from '../utils/ApiError';
 import { logger } from '../config/logger';
-import {
-  MeetingType,
-  MeetingStatus,
-  RecurrenceFrequency,
-  NotificationType,
-  NotificationStatus,
-} from '../types/enums';
+import { MeetingType, MeetingStatus, RecurrenceFrequency } from '../types/enums';
 
 export interface CreateMeetingDto {
   title: string;
@@ -99,17 +94,9 @@ export async function createMeetings(organizerId: string, dto: CreateMeetingDto)
       });
       created.push(meeting);
 
-      // Record invitation notifications (Google delivers them via sendUpdates: 'all')
-      await Notification.insertMany(
-        participants.map((p) => ({
-          recipient: p._id,
-          meeting: meeting._id,
-          type: NotificationType.INVITATION,
-          status: NotificationStatus.SENT,
-          subject: `Invitation: ${dto.title}`,
-          sentAt: new Date(),
-        }))
-      );
+      // Send branded invitation emails + record notifications, then schedule reminders
+      await notifyInvitation(meeting, participants, organizer.name);
+      await scheduleReminders(meeting._id.toString(), meeting.startTime);
     }
   } catch (err) {
     // Roll back Google events + DB docs created so far
@@ -191,16 +178,9 @@ export async function rescheduleMeeting(
   meeting.endTime = endTime;
   await meeting.save();
 
-  await Notification.insertMany(
-    meeting.participants.map((p) => ({
-      recipient: p,
-      meeting: meeting._id,
-      type: NotificationType.RESCHEDULE,
-      status: NotificationStatus.SENT,
-      subject: `Rescheduled: ${meeting.title}`,
-      sentAt: new Date(),
-    }))
-  );
+  const participants = await User.find({ _id: { $in: meeting.participants } });
+  await notifyReschedule(meeting, participants, organizer.name);
+  await rescheduleReminders(meeting._id.toString(), startTime);
   return meeting;
 }
 
@@ -220,15 +200,9 @@ export async function cancelMeeting(organizerId: string, meetingId: string, reas
   meeting.cancelReason = reason;
   await meeting.save();
 
-  await Notification.insertMany(
-    meeting.participants.map((p) => ({
-      recipient: p,
-      meeting: meeting._id,
-      type: NotificationType.CANCELLATION,
-      status: NotificationStatus.SENT,
-      subject: `Cancelled: ${meeting.title}`,
-      sentAt: new Date(),
-    }))
-  );
+  await removeReminders(meeting._id.toString());
+  const organizer = await User.findById(organizerId);
+  const participants = await User.find({ _id: { $in: meeting.participants } });
+  await notifyCancellation(meeting, participants, organizer?.name ?? 'Organizer', reason);
   return meeting;
 }

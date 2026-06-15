@@ -2,9 +2,15 @@ import { createApp } from './app';
 import { connectDatabase, disconnectDatabase } from './config/database';
 import { env } from './config/env';
 import { logger } from './config/logger';
+import { startReminderWorker } from './jobs/reminderWorker';
+import { verifyEmailTransport } from './services/email.service';
 
 async function bootstrap() {
   await connectDatabase();
+
+  // Background services (degrade gracefully if Redis/SMTP unavailable)
+  startReminderWorker();
+  void verifyEmailTransport();
 
   const app = createApp();
   const server = app.listen(env.port, () => {
