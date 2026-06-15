@@ -119,29 +119,35 @@ function MeetingDetail() {
           )}
         </Card>
 
-        {isTeacher && meeting.status === 'scheduled' && (
+        {isTeacher && meeting.status !== 'cancelled' && (
           <Card>
             <h3 className="mb-3 font-semibold text-gray-900">Organizer Actions</h3>
             <div className="space-y-2">
-              <button onClick={() => setShowReschedule((v) => !v)} className="flex w-full items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50">
-                <CalendarClock size={16} /> Reschedule
-              </button>
-              {showReschedule && (
-                <div className="space-y-2 rounded-lg bg-gray-50 p-3">
-                  <input type="date" className="w-full rounded border px-2 py-1 text-sm" onChange={(e) => setResched((r) => ({ ...r, date: e.target.value }))} />
-                  <div className="flex gap-2">
-                    <input type="time" className="w-full rounded border px-2 py-1 text-sm" onChange={(e) => setResched((r) => ({ ...r, start: e.target.value }))} />
-                    <input type="time" className="w-full rounded border px-2 py-1 text-sm" onChange={(e) => setResched((r) => ({ ...r, end: e.target.value }))} />
-                  </div>
-                  <button onClick={submitReschedule} className="w-full rounded bg-brand-600 px-3 py-1.5 text-sm text-white">Confirm</button>
-                </div>
+              {meeting.status === 'scheduled' && (
+                <>
+                  <button onClick={() => setShowReschedule((v) => !v)} className="flex w-full items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50">
+                    <CalendarClock size={16} /> Reschedule
+                  </button>
+                  {showReschedule && (
+                    <div className="space-y-2 rounded-lg bg-gray-50 p-3">
+                      <input type="date" className="w-full rounded border px-2 py-1 text-sm" onChange={(e) => setResched((r) => ({ ...r, date: e.target.value }))} />
+                      <div className="flex gap-2">
+                        <input type="time" className="w-full rounded border px-2 py-1 text-sm" onChange={(e) => setResched((r) => ({ ...r, start: e.target.value }))} />
+                        <input type="time" className="w-full rounded border px-2 py-1 text-sm" onChange={(e) => setResched((r) => ({ ...r, end: e.target.value }))} />
+                      </div>
+                      <button onClick={submitReschedule} className="w-full rounded bg-brand-600 px-3 py-1.5 text-sm text-white">Confirm</button>
+                    </div>
+                  )}
+                </>
               )}
               <button onClick={sync} className="flex w-full items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50">
                 <RefreshCw size={16} /> Sync Attendance
               </button>
-              <button onClick={cancel} className="flex w-full items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm text-red-600 hover:bg-red-50">
-                <XCircle size={16} /> Cancel Meeting
-              </button>
+              {meeting.status === 'scheduled' && (
+                <button onClick={cancel} className="flex w-full items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm text-red-600 hover:bg-red-50">
+                  <XCircle size={16} /> Cancel Meeting
+                </button>
+              )}
             </div>
           </Card>
         )}

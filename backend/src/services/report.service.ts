@@ -3,6 +3,7 @@ import { Meeting } from '../models/Meeting';
 import { Attendance } from '../models/Attendance';
 import { ApiError } from '../utils/ApiError';
 import { getMeetingAttendance, MeetingAttendanceRow } from './attendance.service';
+import { markDueMeetingsCompleted } from './meeting.service';
 import { ATTENDED_STATUSES } from '../utils/attendanceStatus';
 import { AttendanceStatus, MeetingStatus } from '../types/enums';
 
@@ -70,6 +71,7 @@ export interface TeacherSummary {
 
 /** Aggregate analytics across a teacher's meetings (optionally within a date range). */
 export async function getTeacherSummary(teacherId: string, from?: Date, to?: Date): Promise<TeacherSummary> {
+  await markDueMeetingsCompleted({ organizerId: teacherId });
   const query: Record<string, unknown> = { organizer: teacherId };
   if (from || to) {
     const range: Record<string, Date> = {};

@@ -2,6 +2,7 @@ import { Meeting } from '../models/Meeting';
 import { Attendance } from '../models/Attendance';
 import { User } from '../models/User';
 import { getTeacherSummary } from './report.service';
+import { markDueMeetingsCompleted } from './meeting.service';
 import { isSameZonedDay } from '../utils/datetime';
 import { ATTENDED_STATUSES } from '../utils/attendanceStatus';
 import { AttendanceStatus, MeetingStatus } from '../types/enums';
@@ -15,6 +16,7 @@ async function userTimezone(userId: string): Promise<string> {
 
 /** Teacher dashboard: counts, attendance %, today's + upcoming meetings, analytics. */
 export async function getTeacherDashboard(teacherId: string) {
+  await markDueMeetingsCompleted({ organizerId: teacherId });
   const tz = await userTimezone(teacherId);
   const now = new Date();
   const summary = await getTeacherSummary(teacherId);
@@ -53,6 +55,7 @@ export async function getTeacherDashboard(teacherId: string) {
 
 /** Candidate dashboard: upcoming, today's, history count, personal attendance stats. */
 export async function getCandidateDashboard(userId: string) {
+  await markDueMeetingsCompleted({ participantId: userId });
   const tz = await userTimezone(userId);
   const now = new Date();
 

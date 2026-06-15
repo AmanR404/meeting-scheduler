@@ -116,8 +116,37 @@ interface ListFilters {
   to?: Date;
 }
 
+/**
+ * Transition scheduled meetings whose end time has passed to "completed".
+ * Returns the newly-completed meetings (id + organizer) so callers can, e.g.,
+ * trigger an attendance sync. Scoped optionally to one organizer/participant.
+ */
+export async function markDueMeetingsCompleted(
+  scope: { organizerId?: string; participantId?: string } = {}
+): Promise<{ id: string; organizer: string }[]> {
+  const q: Record<string, unknown> = {
+    status: MeetingStatus.SCHEDULED,
+    endTime: { $lt: new Date() },
+  };
+  if (scope.organizerId) q.organizer = scope.organizerId;
+  if (scope.participantId) q.participants = scope.participantId;
+
+  const due = await Meeting.find(q).select('_id organizer').lean();
+  if (due.length === 0) return [];
+  await Meeting.updateMany(
+    { _id: { $in: due.map((d) => d._id) } },
+    { $set: { status: MeetingStatus.COMPLETED } }
+  );
+  return due.map((d) => ({ id: d._id.toString(), organizer: d.organizer.toString() }));
+}
+
 /** List meetings visible to the user (organizer sees own; candidate sees assigned). */
 export async function listMeetings(user: { id: string; role: string }, filters: ListFilters) {
+  // Keep statuses fresh before listing
+  await markDueMeetingsCompleted(
+    user.role === 'teacher' ? { organizerId: user.id } : { participantId: user.id }
+  );
+
   const query: Record<string, unknown> = {};
   if (user.role === 'teacher') query.organizer = user.id;
   else query.participants = user.id;
@@ -148,6 +177,12 @@ export async function getMeetingForUser(user: { id: string; role: string }, meet
   const isOrganizer = meeting.organizer._id.toString() === user.id;
   const isParticipant = meeting.participants.some((p) => p._id.toString() === user.id);
   if (!isOrganizer && !isParticipant) throw ApiError.forbidden('You cannot access this meeting');
+
+  // Auto-complete if the meeting has ended
+  if (meeting.status === MeetingStatus.SCHEDULED && meeting.endTime.getTime() < Date.now()) {
+    meeting.status = MeetingStatus.COMPLETED;
+    await meeting.save();
+  }
   return meeting;
 }
 

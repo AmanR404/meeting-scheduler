@@ -14,6 +14,12 @@ import { AttendanceStatus } from '../types/enums';
 
 const REPORTS_SCOPE = 'https://www.googleapis.com/auth/admin.reports.audit.readonly';
 
+/** True if the Workspace service account + admin impersonation are configured. */
+export function isWorkspaceConfigured(): boolean {
+  const keyPath = path.resolve(process.cwd(), env.google.serviceAccountPath);
+  return fs.existsSync(keyPath) && !!env.google.workspaceAdminEmail;
+}
+
 function buildReportsClient(): admin_reports_v1.Admin {
   const keyPath = path.resolve(process.cwd(), env.google.serviceAccountPath);
   if (!fs.existsSync(keyPath)) {
