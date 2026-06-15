@@ -42,6 +42,13 @@ export const env = {
     workspaceAdminEmail: optional('GOOGLE_WORKSPACE_ADMIN_EMAIL'),
   },
 
+  // Comma-separated emails that should be created as TEACHERS on first login.
+  // Everyone else defaults to CANDIDATE. The workspace admin email is always a teacher.
+  teacherEmails: optional('TEACHER_EMAILS')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean),
+
   email: {
     provider: optional('EMAIL_PROVIDER', 'gmail'),
     user: optional('EMAIL_USER'),
