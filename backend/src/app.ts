@@ -4,10 +4,12 @@ import cors from 'cors';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
+import swaggerUi from 'swagger-ui-express';
 import { env } from './config/env';
 import { logger } from './config/logger';
 import { apiLimiter } from './middleware/rateLimiter';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import { openapiSpec } from './config/swagger';
 import routes from './routes';
 
 export function createApp(): Application {
@@ -35,6 +37,10 @@ export function createApp(): Application {
 
   // Rate limiting on the API surface
   app.use('/api', apiLimiter);
+
+  // API documentation (Swagger UI + raw spec)
+  app.get('/api/docs.json', (_req, res) => res.json(openapiSpec));
+  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(openapiSpec, { customSiteTitle: 'Meeting Scheduler API' }));
 
   // API routes
   app.use('/api', routes);
