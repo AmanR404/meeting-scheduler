@@ -26,7 +26,10 @@ export async function upsertUserFromGoogle(
   profile: GoogleProfile,
   tokens: Credentials
 ): Promise<UpsertResult> {
-  const existing = await User.findOne({ googleId: profile.googleId });
+  // Match by googleId, or by email to upgrade a placeholder invited user (googleId "pending:<email>")
+  const existing = await User.findOne({
+    $or: [{ googleId: profile.googleId }, { email: profile.email.toLowerCase() }],
+  });
   const now = new Date();
 
   const tokenFields: Partial<IUser> = {
@@ -39,12 +42,14 @@ export async function upsertUserFromGoogle(
   }
 
   if (existing) {
+    const wasPlaceholder = existing.googleId.startsWith('pending:');
+    existing.googleId = profile.googleId; // upgrade placeholder to the real Google id
     existing.name = profile.name;
     existing.profileImage = profile.picture;
     existing.lastLoginAt = now;
     Object.assign(existing, tokenFields);
     await existing.save();
-    return { user: existing, isNew: false };
+    return { user: existing, isNew: wasPlaceholder };
   }
 
   const created = await User.create({
