@@ -24,6 +24,7 @@ function MeetingDetail() {
   const [msg, setMsg] = useState<string | null>(null);
   const [showReschedule, setShowReschedule] = useState(false);
   const [resched, setResched] = useState({ date: '', start: '', end: '' });
+  const [autoRecording, setAutoRecording] = useState(false);
 
   const load = useCallback(async () => {
     const m = await unwrap<Meeting>(api.get(`/meetings/${id}`));
@@ -38,9 +39,19 @@ function MeetingDetail() {
     load().finally(() => setLoading(false));
   }, [load]);
 
-  // Candidate: heartbeat while present
+  // Candidate: auto-record join when viewing a live meeting, then heartbeat while present
   useEffect(() => {
     if (isTeacher || !meeting || meeting.status !== 'scheduled') return;
+    const now = Date.now();
+    const start = new Date(meeting.startTime).getTime();
+    const end = new Date(meeting.endTime).getTime();
+    // "Live" = from 10 min before start until the end time
+    const isLive = now >= start - 10 * 60 * 1000 && now <= end;
+    if (!isLive) return;
+
+    // Auto-record join just by being on the page (forgiving capture)
+    api.post(`/attendance/${id}/join`).catch(() => {});
+    setAutoRecording(true);
     const t = setInterval(() => {
       api.post(`/attendance/${id}/heartbeat`).catch(() => {});
     }, 60000);
@@ -116,6 +127,13 @@ function MeetingDetail() {
                 <Video size={16} /> Open Meet Link
               </a>
             </div>
+          )}
+
+          {!isTeacher && autoRecording && (
+            <p className="mt-3 flex items-center gap-1.5 text-sm text-green-600">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
+              Your attendance is being recorded.
+            </p>
           )}
         </Card>
 
