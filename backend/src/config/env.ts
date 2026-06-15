@@ -62,6 +62,13 @@ export const env = {
     password: optional('REDIS_PASSWORD'),
   },
 
+  attendance: {
+    // grace window (minutes) after start before a join counts as "late"
+    lateGraceMinutes: parseInt(optional('ATTENDANCE_LATE_GRACE_MIN', '5'), 10),
+    // leaving more than this many minutes before the end counts as "left early"
+    earlyLeaveMinutes: parseInt(optional('ATTENDANCE_EARLY_LEAVE_MIN', '5'), 10),
+  },
+
   timezone: optional('TIMEZONE', 'UTC'),
 };
 
